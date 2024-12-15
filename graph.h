@@ -5,8 +5,13 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
-#include <iostream>
 #include <vector>
+#include <cstdlib>
+#include <ctime>
+#include <set>
+#include <utility>
+#include <unordered_set>
+#include <algorithm>
 
 using namespace std;
 
@@ -41,17 +46,16 @@ vector<int> get_g(const vector<vector<int>> &graph, const int i, const vector<in
 
 
 // Возвращает разность двух векторов vec1 и vec2 (элементы vec1, которых нет в vec2)
-vector<int> diff_vector(const vector<int>& vec1, const vector<int> &vec2) {
+vector<int> diff_vector(const vector<int>& vec1, const vector<int>& vec2) {
     vector<int> result;
-    for (auto x: vec1) {
-        bool push_x = true;
-        for (auto y: vec2)
+    for (const auto &x: vec1) {
+        bool flag = true;
+        for (const auto &y: vec2)
             if (x == y) {
-                push_x = false;
+                flag = false;
                 break;
             }
-
-        if (push_x)
+        if (flag)
             result.push_back(x);
     }
 
@@ -108,6 +112,18 @@ bool vector_equal(const vector<int> &v1, const vector<int> &v2) {
 }
 
 
+int count_edges(const vector<vector<int>> &graph) {
+    int total_edges = 0;
+    for (const auto &row : graph) {
+        for (const auto &val : row) {
+            total_edges += val;
+        }
+    }
+    return total_edges / 2; // Для неориентированного графа делим на 2
+}
+
+
+// cycle
 // Находит все циклы в графе graph
 void get_all_cycle(const int i,
                    const vector<vector<int>> &graph,
@@ -147,114 +163,71 @@ void get_all_simple_cycle(const int i,
 }
 
 
-vector<vector<int> > generate_zero_graph(const int n, const int m) {
-    vector<vector<int> > a;
-    for (int i = 0; i < n; i++) {
-        vector<int> row(m, 0);
-        a.push_back(row);
-    }
+vector<vector<int> > generate_zero_graph(const int n) {
+    vector<vector<int> > a(n, vector<int>(n, 0));
     return a;
 }
 
 
-vector<vector<int> > generate_rand_graph(const int n, const int m) {
-    vector<vector<int> > a = generate_zero_graph(n, m);
-    srand(clock());
-    for (int j = 0; j < m; j++) {
-        const int i = rand() % n;
-        a[i][j] = 1;
-        int k = i;
-        while (i == k)
-            k = rand() % n;
-        a[k][j] = 1;
+vector<vector<int>> generate_rand_graph(const int n, const int m) {
+    srand(static_cast<unsigned int>(time(0))); // Инициализация генератора случайных чисел
+    vector<vector<int>> a = generate_zero_graph(n);
+
+    set<pair<int, int>> edges; // Хранение добавленных рёбер
+
+    while (edges.size() < m) {
+        int i = rand() % n;
+        int j = rand() % n;
+
+        if (i != j) { // Избегаем петель (i == j)
+            int u = min(i, j); // Минимальная вершина
+            int v = max(i, j); // Максимальная вершина
+            pair<int, int> edge = {u, v}; // Упорядочиваем вершины
+
+            if (edges.find(edge) == edges.end()) { // Проверяем, что такого ребра ещё нет
+                edges.insert(edge);
+                a[u][v] = 1;
+                a[v][u] = 1; // Граф неориентированный
+            }
+        }
     }
+
     return a;
 }
 
 
-void free_matrix(vector<vector<int>> &a) {
-    const int size = a.size();
-    for (int i = 0; i < size; i++)
-        a[i].clear();
+// Функция для выполнения DFS
+void dfs(int node, const vector<vector<int>> &graph, vector<bool> &visited) {
+    visited[node] = true;
+    for (int neighbor = 0; neighbor < graph[node].size(); ++neighbor) {
+        if (graph[node][neighbor] == 1 && !visited[neighbor]) {
+            dfs(neighbor, graph, visited);
+        }
+    }
 }
 
+// Функция для проверки связности графа
+bool is_contact(const vector<vector<int>> &graph) {
+    int n = graph.size(); // Количество вершин в графе
+    vector<bool> visited(n, false);
 
-bool is_contact(const vector<vector<int> > &graph) {
-    vector<int> a(graph.size(), 0);
-    for (int i = 0; i < graph.size(); i++)
-        if (a[i] == i)
-            for (int j = 0; j < graph[0].size(); j++)
-                if (graph[i][j])
-                    for (int k = 0; k < graph.size(); k++)
-                        if (k != i && graph[k][j] == 1 && a[k] == 0)
-                            a[k] = i + 1;
+    // Запускаем DFS с первой вершины
+    dfs(0, graph, visited);
 
-    for (int i = 0; i < graph.size(); i++) {
-        if (a[i] == 0)
-            return false;
-        i++;
+    // Проверяем, были ли посещены все вершины
+    for (bool wasVisited : visited) {
+        if (!wasVisited) {
+            return false; // Если хоть одна вершина не посещена, граф несвязный
+        }
     }
-
     return true;
 }
 
 
-bool is_connected_vertices(const int i, const int j, const vector<vector<int>> &graph) {
-    for (int k = 0; k < graph[0].size(); k++)
-        if (graph[i][k] && graph[j][k])
-            return true;
-    return false;
-}
 
-
-bool find_hamiltonian_cycle(vector<int> a,
-                            vector<int> vertics,
-                            const int i,
-                            const int n,
-                            const int m,
-                            const vector<vector<int>> &graph) {
-    for (int x = 0; x < n; x++) {
-        if (is_connected_vertices(a[i-1], x, graph) && x != a[i-1] && vertics[x] == 0) {
-            a[i] = x;
-            if (a[i-1] == a[0] && i == n)
-                return true;
-
-            vertics[x] = 1;
-            if (find_hamiltonian_cycle(a, vertics, i+1, n, m, graph))
-                return true;
-            vertics[x] = 0;
-        }
-    }
-
-    return false;
-}
-
-
-void get_all_eulerian_graph(const int i,
-                            vector<vector<int>> e,
-                            const vector<vector<int>> &graph,
-                            vector<int> w,
-                            vector<vector<int>> &result) {
-    vector<int> g = get_g(graph, i, w);
-    const vector<int> y = get_y_from_e(w[i-1], e);
-    g = diff_vector(g, y);
-
-    for (const auto x: g) {
-        w[i] = x;
-        if (x == w[0] && i == e.size()) {
-            result.push_back(w);
-        } else {
-            vector<vector<int>> sub_e = e;
-            vector<int> elem = {w[i-1], x};
-            sub_e.push_back(elem);
-            get_all_eulerian_graph(i+1, sub_e, graph, w, result);
-        }
-    }
-}
-
-
-void get_all_hahamiltonian_cycle(const int i,
-                                 vector<int> v,
+// hamilton
+void get_hamiltonian_cycle(const int i,
+                                 const vector<int>& v,
                                  const vector<vector<int>> &graph,
                                  vector<int> w,
                                  vector<vector<int>> &result) {
@@ -262,15 +235,173 @@ void get_all_hahamiltonian_cycle(const int i,
     g = diff_vector(g, v);
 
     for (const auto &x: g) {
-        w[i] = x;
-        if (x == w[0] && i == v.size()) {
+        w.push_back(x);
+        if (x == w[0] && i == graph.size()) { //
             result.push_back(w);
         } else {
             vector<int> sub_v = v;
             sub_v.push_back(x);
-            get_all_hahamiltonian_cycle(i+1, sub_v, graph, w, result);
+            get_hamiltonian_cycle(i+1, sub_v, graph, w, result);
         }
+        w.pop_back();
     }
 }
+
+
+vector<vector<int>> get_all_hamiltonian_cycle(const vector<vector<int>> &graph) {
+    vector<vector<int>> result;
+    for (int i = 1; i <= graph.size(); i++) {
+        vector<vector<int>> sub_res;
+        vector<int> w = {i};
+        vector<int> v;
+
+        get_hamiltonian_cycle(1, v, graph, w, sub_res);
+
+        for (const auto &row: sub_res)
+            result.push_back(row);
+    }
+
+    return result;
+}
+
+
+bool _is_hamiltonian_graph(const int i,
+                           const vector<int>& v,
+                           const vector<vector<int>> &graph,
+                           vector<int> w,
+                           vector<vector<int>> &result) {
+    vector<int> g = get_g(graph, i, w);
+    g = diff_vector(g, v);
+
+    for (const auto &x: g) {
+        w.push_back(x);
+        if (x == w[0] && i == graph.size()) {
+            result.push_back(w);
+            return true;
+        } else {
+            vector<int> sub_v = v;
+            sub_v.push_back(x);
+            if (_is_hamiltonian_graph(i + 1, sub_v, graph, w, result)) {
+                return true;
+            }
+        }
+        w.pop_back();
+    }
+
+    return false;
+}
+
+
+bool is_hamiltonian_graph(const vector<vector<int>> &graph) {
+    if (!is_contact(graph))
+        return false;
+
+    for (int i = 1; i <= graph.size(); i++) {
+        vector<vector<int>> res;
+        vector<int> w;
+        w.push_back(i);
+        vector<int> v;
+
+        if (_is_hamiltonian_graph(1, v, graph, w, res))
+            return true;
+    }
+    return false;
+}
+
+
+
+
+// eulerian
+void get_eulerian_cycle(const int i,
+                        vector<vector<int>> e,
+                        const vector<vector<int>> &graph,
+                        vector<int> w,
+                        int amount_edges,
+                        vector<vector<int>> &result) {
+    vector<int> g = get_g(graph, i, w);
+    vector<int> y = get_y_from_e(w[i - 1], e);
+    g = diff_vector(g, y);
+
+    for (const auto &x : g) {
+        w.push_back(x);
+        if (x == w[0] && i == amount_edges) {
+            result.push_back(w);
+        } else {
+            e.push_back({w[i - 1], x});
+            e.push_back({x, w[i - 1]});
+            get_eulerian_cycle(i + 1, e, graph, w, amount_edges, result);
+        }
+        e.pop_back();
+        e.pop_back();
+        w.pop_back();
+    }
+}
+
+
+
+vector<vector<int>> get_all_eulerian_cycle(const vector<vector<int>> &graph) {
+    vector<vector<int>> result;
+    for (int i = 1; i <= graph.size(); i++) {
+        vector<vector<int>> sub_res;
+        vector<int> w = {i};
+        vector<vector<int>> e;
+        const int amount_edges = count_edges(graph);
+
+        get_eulerian_cycle(1, e, graph, w, amount_edges, sub_res);
+
+        for (const auto &row: sub_res)
+            result.push_back(row);
+    }
+
+    return result;
+}
+
+
+bool _is_eulerian_graph(const int i,
+                        vector<vector<int>> e,
+                        const vector<vector<int>> &graph,
+                        vector<int> w,
+                        int amount_edges,
+                        vector<vector<int>> &result) {
+    vector<int> g = get_g(graph, i, w);
+    vector<int> y = get_y_from_e(w[i - 1], e);
+    g = diff_vector(g, y);
+
+    for (const auto &x : g) {
+        w.push_back(x);
+        if (x == w[0] && i == amount_edges) {
+            result.push_back(w);
+            return true;
+        } else {
+            e.push_back({w[i - 1], x});
+            e.push_back({x, w[i - 1]});
+            if (_is_eulerian_graph(i + 1, e, graph, w, amount_edges, result))
+                return true;
+        }
+        e.pop_back();
+        e.pop_back();
+        w.pop_back();
+    }
+    return false;
+}
+
+
+bool is_eulerian_graph(const vector<vector<int>> &graph) {
+    if (!is_contact(graph))
+        return false;
+
+    for (int i = 1; i <= graph.size(); i++) {
+        vector<vector<int>> res;
+        vector<int> w;
+        w.push_back(i);
+        vector<vector<int>> e;
+        const int amount_edges = count_edges(graph);
+
+        if (_is_eulerian_graph(1, e, graph, w, amount_edges,res))
+            return true;
+    }
+    return false;
+}
+
 
 #endif //GRAPH_H
