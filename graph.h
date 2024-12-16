@@ -18,7 +18,6 @@
 
 using namespace std;
 
-
 // Печатает элементы вектора vec через пробел
 void print_vec(const vector<int> &vec) {
     for (const int x: vec)
@@ -36,7 +35,6 @@ void print_matrix(const vector<vector<int> > &a) {
     cout << endl;
 }
 
-
 // Возвращает список вершин, смежных с вершиной w[i-1] в графе graph
 vector<int> get_g(const vector<vector<int>> &graph, const int i, const vector<int> &w) {
     const int index = w[i - 1] - 1;
@@ -47,34 +45,15 @@ vector<int> get_g(const vector<vector<int>> &graph, const int i, const vector<in
     return result;
 }
 
-
-// // Возвращает разность двух векторов vec1 и vec2 (элементы vec1, которых нет в vec2)
-// vector<int> diff_vector(const vector<int>& vec1, const vector<int>& vec2) {
-//     vector<int> result;
-//     for (const auto &x: vec1) {
-//         bool flag = true;
-//         for (const auto &y: vec2)
-//             if (x == y) {
-//                 flag = false;
-//                 break;
-//             }
-//         if (flag)
-//             result.push_back(x);
-//     }
-//
-//     return result;
-// }
-
-
+// Возвращает разность двух векторов (vec1 \ vec2)
 vector<int> diff_vector(const vector<int>& vec1, const vector<int>& vec2) {
     unordered_set<int> set2(vec2.begin(), vec2.end());
     vector<int> result;
     for (const auto &x: vec1)
-        if (set2.find(x) == set2.end()) // Проверка на отсутствие в set2
+        if (set2.find(x) == set2.end())
             result.push_back(x);
     return result;
 }
-
 
 // Возвращает список вершин, соединенных с вершиной w_i через ребра e
 vector<int> get_y_from_e(const int w_i, const vector<vector<int>> &e) {
@@ -84,20 +63,6 @@ vector<int> get_y_from_e(const int w_i, const vector<vector<int>> &e) {
             y.push_back(elem[1]);
     return y;
 }
-
-
-// Умножает две квадратные матрицы mat1 и mat2
-vector<vector<int>> multiplies_square_matrix(const vector<vector<int>> &mat1,
-                                             const vector<vector<int>> &mat2) {
-    vector<vector<int>> res(mat1.size(), vector<int>(mat1.size(), 0));
-
-    for (int k = 0; k < mat1.size(); k++)
-        for (int i = 0; i < mat1.size(); i++)
-            for (int j = 0; j < mat1.size(); j++)
-                res[i][j] += mat1[i][k] * mat2[k][j];
-    return res;
-}
-
 
 // Проверяет, включены ли все элементы vec1 в vec2 (нестрогое включение)
 bool not_strikly_include(const vector<int> &vec1, const vector<int> &vec2) {
@@ -114,7 +79,6 @@ bool not_strikly_include(const vector<int> &vec1, const vector<int> &vec2) {
     return true;
 }
 
-
 // Проверяет, равны ли два вектора v1 и v2
 bool vector_equal(const vector<int> &v1, const vector<int> &v2) {
     for (int i = 0; i < v1.size(); i++)
@@ -124,7 +88,7 @@ bool vector_equal(const vector<int> &v1, const vector<int> &v2) {
     return true;
 }
 
-
+// Подсчитывает количество рёбер в графе
 int count_edges(const vector<vector<int>> &graph) {
     int total_edges = 0;
     for (const auto &row : graph) {
@@ -132,29 +96,43 @@ int count_edges(const vector<vector<int>> &graph) {
             total_edges += val;
         }
     }
-    return total_edges / 2; // Для неориентированного графа делим на 2
+    return total_edges / 2;
 }
 
-
-// cycle
-// Находит все циклы в графе graph
-void get_all_cycle(const int i,
+// Рекурсивно ищет циклы в графе и добавляет их в result
+void get_cycle(const int i,
                    const vector<vector<int>> &graph,
                    vector<int> w,
                    vector<vector<int>> &result) {
     vector<int> g = get_g(graph, i, w);
     for (const auto &x: g) {
-        w[i] = x;
+        w.push_back(x);
         if (x == w[0] && i > 2) {
             result.push_back(w);
         } else {
-            get_all_cycle(i + 1, graph, w, result);
+            get_cycle(i + 1, graph, w, result);
         }
+        w.pop_back();
     }
 }
 
+// Находит все циклы в графе
+vector<vector<int>> get_all_cycle(const vector<vector<int>> &graph) {
+    vector<vector<int>> result;
+    for (int i = 1; i <= graph.size(); i++) {
+        vector<vector<int>> sub_res;
+        vector<int> w = {i};
 
-// Находит все простые циклы в графе graph
+        get_cycle(1, graph, w, sub_res);
+
+        for (const auto &row: sub_res)
+            result.push_back(row);
+    }
+
+    return result;
+}
+
+// Рекурсивно ищет простые циклы в графе и добавляет их в result
 void get_all_simple_cycle(const int i,
                           vector<int> v,
                           const vector<vector<int>> &graph,
@@ -164,50 +142,67 @@ void get_all_simple_cycle(const int i,
     g = diff_vector(g, v);
 
     for (const auto &x: g) {
-        w[i] = x;
+        w.push_back(x);
         if (x == w[0] && i > 2) {
             result.push_back(w);
         } else {
-            vector<int> sub_v = v;
-            sub_v.push_back(x);
-            get_all_simple_cycle(i+1, sub_v, graph, w, result);
+            v.push_back(x);
+            get_all_simple_cycle(i+1, v, graph, w, result);
+            v.pop_back();
         }
+        w.pop_back();
     }
 }
 
+// Находит все простые циклы в графе
+vector<vector<int>> get_all_simple_cycle(const vector<vector<int>> &graph) {
+    vector<vector<int>> result;
+    for (int i = 1; i <= graph.size(); i++) {
+        vector<vector<int>> sub_res;
+        vector<int> w = {i};
+        vector<int> v;
 
+        get_all_simple_cycle(1, v, graph, w, sub_res);
+
+        for (const auto &row: sub_res)
+            result.push_back(row);
+    }
+
+    return result;
+}
+
+// Генерирует пустой граф (матрица смежности с нулями)
 vector<vector<int> > generate_zero_graph(const int n) {
     vector<vector<int> > a(n, vector<int>(n, 0));
     return a;
 }
 
-
+// Генерирует случайный граф с n вершинами и m рёбрами
 vector<vector<int>> generate_rand_graph(const int n, const int m) {
-    srand(static_cast<unsigned int>(clock())); // Инициализация генератора случайных чисел
+    srand(static_cast<unsigned int>(clock()));
     vector<vector<int>> a = generate_zero_graph(n);
 
-    set<pair<int, int>> edges; // Хранение добавленных рёбер
+    set<pair<int, int>> edges;
 
     while (edges.size() < m) {
         int i = rand() % n;
         int j = rand() % n;
 
-        if (i != j) { // Избегаем петель (i == j)
-            int u = min(i, j); // Минимальная вершина
-            int v = max(i, j); // Максимальная вершина
-            pair<int, int> edge = {u, v}; // Упорядочиваем вершины
+        if (i != j) {
+            int u = min(i, j);
+            int v = max(i, j);
+            pair<int, int> edge = {u, v};
 
-            if (edges.find(edge) == edges.end()) { // Проверяем, что такого ребра ещё нет
+            if (edges.find(edge) == edges.end()) {
                 edges.insert(edge);
                 a[u][v] = 1;
-                a[v][u] = 1; // Граф неориентированный
+                a[v][u] = 1;
             }
         }
     }
 
     return a;
 }
-
 
 // Хэш-функция для пары вершин (i, j)
 struct PairHash {
@@ -216,7 +211,7 @@ struct PairHash {
     }
 };
 
-// Функция для генерации случайной матрицы смежности
+// Генерирует случайную матрицу смежности для графа
 vector<vector<int>> generate_adj_matrix(int n, int m) {
     vector<vector<int>> adj_matrix(n, vector<int>(n, 0));
     unordered_set<pair<int, int>, PairHash> edges;
@@ -240,45 +235,38 @@ vector<vector<int>> generate_adj_matrix(int n, int m) {
     return adj_matrix;
 }
 
-
-// Функция для выполнения DFS
+// Выполняет поиск в глубину (DFS) для проверки связности графа
 void dfs(int node, const vector<vector<int>> &graph, vector<bool> &visited) {
     visited[node] = true;
-    for (int neighbor = 0; neighbor < graph[node].size(); ++neighbor) {
-        if (graph[node][neighbor] == 1 && !visited[neighbor]) {
+    for (int neighbor = 0; neighbor < graph.size(); ++neighbor)
+        if (graph[node][neighbor] == 1 && !visited[neighbor])
             dfs(neighbor, graph, visited);
-        }
-    }
 }
 
-// Функция для проверки связности графа
+// Проверяет, является ли граф связным
 bool is_contact(const vector<vector<int>> &graph) {
-    int n = graph.size(); // Количество вершин в графе
+    int n = graph.size();
     vector<bool> visited(n, false);
 
-    // Запускаем DFS с первой вершины
     dfs(0, graph, visited);
 
-    // Проверяем, были ли посещены все вершины
     for (bool wasVisited : visited) {
         if (!wasVisited) {
-            return false; // Если хоть одна вершина не посещена, граф несвязный
+            return false;
         }
     }
     return true;
 }
 
-
+// Подсчитывает степень вершины v в графе
 int degree_vertics(const int v, const vector<vector<int>> &graph) {
     int res = 0;
     for (int j = 0; j < graph.size(); j++)
-        res += graph[v-1][j];
+        res += graph[v][j];
     return res;
 }
 
-
-
-// hamilton
+// Рекурсивно ищет гамильтоновы циклы в графе
 void get_hamiltonian_cycle(const int i,
                            vector<int> v,
                            const vector<vector<int>> &graph,
@@ -289,18 +277,18 @@ void get_hamiltonian_cycle(const int i,
 
     for (const auto &x: g) {
         w.push_back(x);
-        if (x == w[0] && i == graph.size()) { //
+        if (x == w[0] && i == graph.size()) {
             result.push_back(w);
         } else {
             v.push_back(x);
             get_hamiltonian_cycle(i+1, v, graph, w, result);
+            v.pop_back();
         }
-        v.pop_back();
         w.pop_back();
     }
 }
 
-
+// Находит все гамильтоновы циклы в графе
 vector<vector<int>> get_all_hamiltonian_cycle(const vector<vector<int>> &graph) {
     vector<vector<int>> result;
     for (int i = 1; i <= graph.size(); i++) {
@@ -317,7 +305,7 @@ vector<vector<int>> get_all_hamiltonian_cycle(const vector<vector<int>> &graph) 
     return result;
 }
 
-
+// Проверяет наличие гамильтонова цикла в графе
 bool find_hamiltonian_graph(const int i,
                            vector<int> v,
                            const vector<vector<int>> &graph,
@@ -333,28 +321,26 @@ bool find_hamiltonian_graph(const int i,
         v.push_back(x);
         if (find_hamiltonian_graph(i+1, v, graph, w))
             return true;
-
         v.pop_back();
+
         w.pop_back();
     }
     return false;
 }
 
-
+// Проверяет, является ли граф гамильтоновым
 bool is_hamiltonian_graph(const vector<vector<int>> &graph) {
     if (!is_contact(graph))
         return false;
 
-
     const int n = static_cast<int>(graph.size());
     int amount_true = 0;
-    for (int i = 1; i <= graph.size(); i++)
+    for (int i = 0; i < graph.size(); i++)
         if (degree_vertics(i, graph) >= n / 2)
             amount_true++;
 
     if (amount_true == n)
         return true;
-
 
     vector<int> w = {1};
     vector<int> v;
@@ -365,10 +351,7 @@ bool is_hamiltonian_graph(const vector<vector<int>> &graph) {
     return false;
 }
 
-
-
-
-// eulerian
+// Рекурсивно ищет эйлеровы циклы в графе
 void get_eulerian_cycle(const int i,
                         vector<vector<int>> e,
                         const vector<vector<int>> &graph,
@@ -386,16 +369,18 @@ void get_eulerian_cycle(const int i,
         } else {
             e.push_back({w[i - 1], x});
             e.push_back({x, w[i - 1]});
+
             get_eulerian_cycle(i + 1, e, graph, w, amount_edges, result);
+
+            e.pop_back();
+            e.pop_back();
         }
-        e.pop_back();
-        e.pop_back();
+
         w.pop_back();
     }
 }
 
-
-
+// Находит все эйлеровы циклы в графе
 vector<vector<int>> get_all_eulerian_cycle(const vector<vector<int>> &graph) {
     vector<vector<int>> result;
     for (int i = 1; i <= graph.size(); i++) {
@@ -413,18 +398,17 @@ vector<vector<int>> get_all_eulerian_cycle(const vector<vector<int>> &graph) {
     return result;
 }
 
-
-
+// Проверяет, является ли граф эйлеровым
 bool is_eulerian_graph(const vector<vector<int>> &graph) {
     if (!is_contact(graph))
         return false;
 
     for (int i = 0; i < graph.size(); i++)
-        if (degree_vertics(i+1, graph) % 2)
+        if (degree_vertics(i, graph) % 2) {
             return false;
+        }
 
     return true;
 }
-
 
 #endif //GRAPH_H
